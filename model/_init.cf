@@ -25,10 +25,11 @@ entity Host extends std::Host:
         :param image An id that represents the image that needs to be used to
                         boot the virtual machine.
         :param user_data A script that is booted on first boot
+        :param public_key_name The name of the public key that needs to be deployed
     """
-    string  flavor
-    string  image
-    string  user_data
+    string flavor
+    string image
+    string user_data
 end
 
 implement vm::Host using std::none
