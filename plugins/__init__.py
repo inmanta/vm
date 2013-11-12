@@ -398,9 +398,8 @@ class VMHandler(ResourceHandler):
             This method will check what the status of the give resource is on
             openstack.
         """
-        LOGGER.debug("Checking state of resource %s" % resource.id)
-        output = self._nova(resource._parsed_id["hostname"], 
-                            "list", ["--name", resource.name])
+        LOGGER.debug("Checking state of resource %s" % resource)
+        output = self._nova(resource.id.agent_name, "list", ["--name", resource.hostname])
         
         if output is None:
             return {}
@@ -420,7 +419,7 @@ class VMHandler(ResourceHandler):
         
         networks = [x.split("=") for x in vm[3].split(", ")]
         
-        show_output = self._nova(resource._parsed_id["hostname"], "show", [vm[0]])
+        show_output = self._nova(resource.id.agent_name, "show", [vm[0]])
         if show_output[0] != ['Property', 'Value']:
             raise Exception("Nova show output has changed, please update agent.")
         
@@ -477,12 +476,12 @@ class VMHandler(ResourceHandler):
             
             return True
 
-    def facts(self, resource):
+    def facts(self, resource_id):
         """
             Get facts about this resource
         """
-        LOGGER.debug("Finding facts for %s" % resource)
-        section_name = "openstack_" + resource._parsed_id["hostname"]
+        LOGGER.debug("Finding facts for %s" % resource_id)
+        section_name = "openstack_" + resource_id.agent_name
         cfg = self._agent._config
 
         OS_api = OpenstackAPI(cfg[section_name]["auth-url"], 
@@ -533,7 +532,7 @@ class VMHandler(ResourceHandler):
                 host_facts["netmask"] = str(o.nm)            
             
             
-            facts["VirtualMachine[%s,hostname=%s]" % (resource._parsed_id["hostname"], host)] = host_facts
+            facts[str(resource_id)] = host_facts
         
         return facts
         
