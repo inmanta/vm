@@ -25,38 +25,10 @@ import os, re, logging, json, tempfile, urllib, time
 
 from http import client
 from dateutil import parser
+import base64
 
 LOGGER = logging.getLogger(__name__)
 
-
-#     # start generating
-#     vms = types["vm::Host"]
-# 
-#     if len(vms) == 0:
-#         return
-# 
-#     ssh_keys = {}
-#     for vm in vms:
-#         if vm.public_key:
-#             ssh_keys[vm.public_key.name] = vm.public_key.public_key
-# 
-#         vm_def = {
-#             "id" : "VirtualMachine[%s,hostname=%s]" % (vm.iaas.name, vm.name),
-#             "hostname" : vm.name,
-#             "type" : vm.flavor,
-#             "image" : vm.image,
-#             "public_key" : vm.public_key.name,
-#             "user_data" : vm.user_data,
-#             "requires" : ["SSHKey[%s,name=%s]" % (vm.iaas.name, vm.public_key.name)],
-#         }
-#         exporter.add_resource(vm_def)
-# 
-#     for key,value in ssh_keys.items():
-#         exporter.add_resource({
-#             "id" : "SSHKey[%s,name=%s]" % (vm.iaas.name, key),
-#             "name" : key,
-#             "value" : value.strip(),
-#         })
 
 def get_key_name(exporter, vm):
     return vm.public_key.name
@@ -64,34 +36,28 @@ def get_key_name(exporter, vm):
 def get_key_value(exporter, vm):
     return vm.public_key.public_key
 
+def get_config(exporter, vm):
+    """
+        Create the auth url that openstack can use
+    """
+    iaas = vm.iaas
+    iaas_config = iaas.config
+    
+    if iaas_config.type != "openstack":
+        raise Exception("Only openstack is currently supported")
+    
+    return {"url" : iaas_config.connection_url, "username" : iaas_config.username,
+            "tenant" : iaas_config.tenant, "password" : iaas_config.password}
+    
+
 @resource("vm::Host", agent = "iaas.name", id_attribute = "name")     
-class VirtualMachine(Resource):
+class Host(Resource):
     """
         A virtual machine managed by a hypervisor or IaaS
     """
-    fields = ("name", "flavor", "image", "key_name", "user_data", "key_value")
-    map = {"key_name" : get_key_name, "key_value" : get_key_value}
+    fields = ("name", "flavor", "image", "key_name", "user_data", "key_value", "iaas_config")
+    map = {"key_name" : get_key_name, "key_value" : get_key_value, "iaas_config" : get_config}
     
-# @resource("ssh::Key", agent = "vm.iaas.name", id_attribute = "name")
-# class SSHKey(Resource):
-#     """
-#         An sshkey deployed to an IaaS
-#     """
-#     fields = ("name", "public_key")
-
-# @resource("Tenant")
-# class Tenant(Resource):
-#     """
-#         A tenant/project in openstack
-#     """
-#     fields = ("name", "description", "enabled")
-# 
-# @resource("User")  
-# class User(Resource):
-#     """
-#         A user in openstack
-#     """
-#     fields = ("name", "email", "enabled", "tenant")
 
 class OpenstackAPI(object):
     """
@@ -337,6 +303,92 @@ class OpenstackAPI(object):
             }
         
         return keypairs
+    
+    def add_keypair(self, name, public_key_data):
+        """
+        Add a new keypair
+        """
+        auth_token = self.get_auth_token()
+
+        if "compute" not in self._services:
+            raise Exception("Compute service not available")
+        
+        _url = self._services["compute"] + "/os-keypairs"
+        
+        body = json.dumps({"keypair" : {
+            "public_key" : public_key_data,
+            "name" : name
+        }}).encode()
+            
+        conn, path = self._connect(_url)
+        conn.request("POST", path, headers = {"Content-Type" : "application/json",
+                "User-Agent" : "imp-agent", "X-Auth-Token" : auth_token,
+                "X-Auth-Project-Id" : self._tenant}, body = body)
+        res = conn.getresponse()
+        
+        if res.code != 200:
+            raise Exception("Unable to add keypair to Openstack using %s" % _url)
+
+    def get_flavors(self):
+        """
+        Get a list of all the flavors indexed on their id
+        """
+        auth_token = self.get_auth_token()
+
+        if "compute" not in self._services:
+            raise Exception("Compute service not available")
+        
+        _url = self._services["compute"] + "/flavors/detail"
+        
+        conn, path = self._connect(_url)
+        conn.request("GET", path, headers = {"Content-Type" : "application/json",
+                "User-Agent" : "imp-agent", "X-Auth-Token" : auth_token,
+                "X-Auth-Project-Id" : self._tenant})
+        res = conn.getresponse()
+        
+        if res.code != 200:
+            raise Exception("Unable to get flavor list from Openstack using %s" % _url)
+        
+        data = json.loads(res.read().decode("utf-8"))
+        
+        if "flavors" not in data:
+            return {}
+        
+        flavors = {}
+        for fl in data["flavors"]:
+            flavors[fl["id"]] = fl
+            
+        return flavors
+    
+    def boot(self, name, flavor, image, key_name, user_data):
+        """
+        Boot the virtual machine
+        """
+        auth_token = self.get_auth_token()
+
+        if "compute" not in self._services:
+            raise Exception("Compute service not available")
+        
+        _url = self._services["compute"] + "/servers"
+        
+        body = {"server" : {
+            "name" : name,
+            "flavorRef" : flavor,
+            "key_name" : key_name,
+            "imageRef" : image,
+            "user_data" : base64.encodestring(user_data.encode()).decode("ascii"),
+            "max_count" : 1,
+            "min_count" : 1,
+        }}
+        
+        conn, path = self._connect(_url)
+        conn.request("POST", path, headers = {"Content-Type" : "application/json",
+                "User-Agent" : "imp-agent", "X-Auth-Token" : auth_token,
+                "X-Auth-Project-Id" : self._tenant}, body = json.dumps(body).encode())
+        res = conn.getresponse()
+        
+        if res.code < 200 or res.code > 299:
+            raise Exception("Unable to boot server %s on Openstack using %s (%s)" % (name, _url, res.read()))
 
 @provider("vm::Host")
 class VMHandler(ResourceHandler):
@@ -345,134 +397,81 @@ class VMHandler(ResourceHandler):
     """
     @classmethod
     def is_available(self, io):
-        return io.file_exists("/usr/bin/nova") and io.file_exists("/usr/bin/quantum")
+        return True
     
-    def get_os_arguments(self, cloud_name):
-        """
-            Return the arguments for the nova clients
-        """
-        section_name = "openstack_%s" % cloud_name
-        
-        if section_name not in self._agent._config:
-            raise Exception("No configuration parameters for %s cloud found" % cloud_name)
-        
-        cfg = self._agent._config
-        arguments = ["--os-auth-url", cfg[section_name]["auth-url"], 
-                     "--os-username", cfg[section_name]["username"], 
-                     "--os-password", cfg[section_name]["password"],
-                     "--os-tenant-name", cfg[section_name]["tenant"]]
-        
-        return arguments
-
-    def _nova(self, cloud_name, command, parameters = [], binary = "/usr/bin/nova"):
-        """
-            Execute a nova command with given parameters
-        """
-        arguments = self.get_os_arguments(cloud_name) + [command] + parameters
-
-        result = self._io.run(binary, arguments)
-        
-        if result[1] != '':
-            raise Exception("An error occurred while calling nova with %s %s: %s" % (command, parameters, result[1]))
-        
-        output = result[0]
-        
-        if output == "":
-            return None
-        
-        lines = [x for x in output.split("\n") if x[0] != "+"]
-        
-        table = []
-        for row in [x.split("|")[1:-1] for x in lines]:
-            table.append([])
-            for cell in row:
-                table[-1].append(cell.strip())
-
-        header = table[0]
-        table = table[1:]
-        
-        return header, table
-        
     def check_resource(self, resource):
         """
             This method will check what the status of the give resource is on
             openstack.
         """
         LOGGER.debug("Checking state of resource %s" % resource)
-        output = self._nova(resource.id.agent_name, "list", ["--name", resource.hostname])
+        os_api = OpenstackAPI(resource.iaas_config["url"], resource.iaas_config["tenant"], 
+                        resource.iaas_config["username"], resource.iaas_config["password"])
         
-        if output is None:
-            return {}
+        vm_state = {}
         
-        if output[0] != ['ID', 'Name', 'Status', 'Networks']:
-            raise Exception("Nova list output has changed, please update agent.")
+        vm_list = os_api.vm_list(resource.name)
         
-        vm_list = output[1]
+        # how the vm doing
+        if resource.name in vm_list:
+            vm_state["vm"] = vm_list[resource.name]["status"]
+        else:
+            vm_state["vm"] = None
+            
+        # check if the key is there
+        keys = os_api.get_keypairs()
         
-        if len(vm_list) > 1:
-            raise Exception("More than one virtual machine matches the resource %s" % resource.id)
+        # TODO: also check the key itself
+        if resource.key_name in keys:
+            vm_state["key"] = True
+        else:
+            vm_state["key"] = False
         
-        if len(vm_list) == 0:
-            return {}
-        
-        vm = vm_list[0]
-        
-        networks = [x.split("=") for x in vm[3].split(", ")]
-        
-        show_output = self._nova(resource.id.agent_name, "show", [vm[0]])
-        if show_output[0] != ['Property', 'Value']:
-            raise Exception("Nova show output has changed, please update agent.")
-        
-        properties = {}
-        for row in show_output[1]:
-            properties[row[0]] = row[1]
-        
-        result = re.search(r"\(([0-9]+)\)", properties["flavor"])
-        flavor = result.group(1)
-        
-        return {"id" : vm[0], "name" : vm[1], "status" : vm[2], "type" : flavor,
-                "networks" : networks, "properties" : properties}
-        
+        return vm_state
+            
     def list_changes(self, resource):
         """
             List the changes that are required to the vm
         """
+        vm_state = self.check_resource(resource)
         LOGGER.debug("Determining changes required to resource %s" % resource.id)
-        state = self.check_resource(resource)
         
-        if state == {}:
-            # create a new vm
-            return {"name": (None, resource.name), 
-                    "flavor": (None, str(resource.type)),
-                    "image": (None, resource.image),
-                    "public_key" : (None, resource.public_key),
-                    "user_data" : (None, resource.user_data)}
+        changes = {}
+        
+        if not vm_state["key"]:
+            changes["key"] = (resource.key_name, resource.key_value)
             
-        else:
-            # we will not change or delete it
-            return {}
+        if vm_state["vm"] is None:
+            changes["vm"] = resource
+        
+        return changes
         
     def do_changes(self, resource):
         """
             Enact the changes
         """
-        LOGGER.debug("Making changes to resource %s" % resource.id)
         changes = self.list_changes(resource)
         
-        if "name" in changes and changes["name"][0] is None:
-            f = tempfile.NamedTemporaryFile(delete=False)
-            f.write(changes["user_data"][1].encode("utf-8"))
-            f.close()
+        if len(changes) > 0:
+            LOGGER.debug("Making changes to resource %s" % resource.id)
             
-            # create the VM
-            self._nova(resource._parsed_id["hostname"], "boot", [
-                        "--flavor", changes["flavor"][1], 
-                        "--image", changes["image"][1],
-                        "--key-name", changes["public_key"][1], 
-                        "--user-data", f.name,
-                        changes["name"][1]])
+            os_api = OpenstackAPI(resource.iaas_config["url"], resource.iaas_config["tenant"], 
+                resource.iaas_config["username"], resource.iaas_config["password"])
             
-            os.unlink(f.name)
+            if "key" in changes:
+                os_api.add_keypair(changes["key"][0], changes["key"][1])
+            
+            if "vm" in changes:
+                # find the flavor ref
+                flavor = 0
+                for _id, fl in os_api.get_flavors().items():
+                    if fl["name"] == resource.flavor:
+                        flavor = int(_id) 
+                
+                if flavor <= 0:
+                    raise Exception("Flavor %s does not exist for vm %s" % (resource.flavor, resource))
+                
+                os_api.boot(resource.name, flavor, resource.image, resource.key_name, resource.user_data)
             
             return True
 
@@ -535,113 +534,3 @@ class VMHandler(ResourceHandler):
             facts[str(resource_id)] = host_facts
         
         return facts
-        
-@provider("ssh::Key")
-class SSHKeyHandler(ResourceHandler):
-    """
-        This class handles managing ssh key in openstack
-    """
-    @classmethod
-    def is_available(self, io):
-        return io.file_exists("/usr/bin/nova")
-    
-    def get_os_arguments(self, cloud_name):
-        """
-            Return the arguments for the nova clients
-        """
-        section_name = "openstack_%s" % cloud_name
-        
-        if section_name not in self._agent._config:
-            raise Exception("No configuration parameters for %s cloud found" % cloud_name)
-        
-        cfg = self._agent._config
-        arguments = ["--os-auth-url", cfg[section_name]["auth-url"], 
-                     "--os-username", cfg[section_name]["username"], 
-                     "--os-password", cfg[section_name]["password"],
-                     "--os-tenant-name", cfg[section_name]["tenant"]]
-        
-        return arguments
-
-    def _nova(self, cloud_name, command, parameters = [], binary = "/usr/bin/nova"):
-        """
-            Execute a nova command with given parameters
-        """
-        arguments = self.get_os_arguments(cloud_name) + [command] + parameters
-        
-        result = self._io.run(binary, arguments)
-        
-        if result[1] != '':
-            raise Exception("An error occurred while calling nova with %s %s: %s" % (command, parameters, result[1]))
-        
-        output = result[0]
-        
-        if output == "":
-            return None
-        
-        lines = [x for x in output.split("\n") if x[0] != "+"]
-        
-        table = []
-        for row in [x.split("|")[1:-1] for x in lines]:
-            table.append([])
-            for cell in row:
-                table[-1].append(cell.strip())
-
-        header = table[0]
-        table = table[1:]
-        
-        return header, table
-        
-    def check_resource(self, resource):
-        """
-            This method will check what the status of the give resource is on
-            openstack.
-        """
-        LOGGER.debug("Checking state of resource %s" % resource.id)
-        output = self._nova(resource._parsed_id["hostname"], "keypair-list", [])
-        
-        if output is None:
-            return {}
-        
-        if output[0] != ['Name', 'Fingerprint']:
-            raise Exception("Nova list output has changed, please update agent.")
-
-        table = output[1]
-        
-        for name, fingerprint in table:
-            if name == resource.name:
-                return {"name" : name, "fingerprint" : fingerprint}
-        
-        return {}
-        
-    def list_changes(self, resource):
-        """
-            List the changes that are required to the vm
-        """
-        LOGGER.debug("Determining changes required to resource %s" % resource.id)
-        state = self.check_resource(resource)
-        
-        if "name" in state:
-            return {}
-        
-        else:
-            return {"name": (None, resource.name), 
-                    "value": (None, resource.value)}
-        
-    def do_changes(self, resource):
-        """
-            Enact the changes
-        """
-        LOGGER.debug("Making changes to resource %s" % resource.id)
-        changes = self.list_changes(resource)
-        
-        if len(changes) > 0:
-            # write the key to a temporary file
-            fd = tempfile.NamedTemporaryFile(delete = False, mode = "w+")
-            fd.write(changes["value"][1])
-            fd.close()
-            
-            _output = self._nova(resource._parsed_id["hostname"], "keypair-add", 
-                    ["--pub-key", fd.name, changes["name"][1]])
-            
-            os.remove(fd.name)
-            return True
