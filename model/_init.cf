@@ -64,14 +64,14 @@ implement IaaSConfig using std::none
 IaaS iaas [1] -- [1] IaaSConfig config
 
 """
-    Each IaaS can have specific routes set, for example to other clouds in 
+    Each IaaS can have specific routes set, for example to other clouds in
     a hybric cloud setting
 """
 IaaS iaas [0:] -- [0:] ip::Route routes
 
 entity ManagementServer extends vm::Host:
     """
-        Inherit from this to define the management server. This server can be 
+        Inherit from this to define the management server. This server can be
         bootstrapped by the platform.
     """
 end

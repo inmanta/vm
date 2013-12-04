@@ -49,6 +49,15 @@ def get_config(exporter, vm):
     return {"url" : iaas_config.connection_url, "username" : iaas_config.username,
             "tenant" : iaas_config.tenant, "password" : iaas_config.password}
 
+def get_user_data(exporter, vm):
+    """
+        Return an empty string when the user_data value is unknown
+        TODO: this is a hack
+    """
+    if isinstance(vm.user_data, Unknown):
+        return ""
+    
+    return vm.user_data
 
 @resource("vm::Host", agent = "iaas.name", id_attribute = "name")
 class Host(Resource):
@@ -56,7 +65,8 @@ class Host(Resource):
         A virtual machine managed by a hypervisor or IaaS
     """
     fields = ("name", "flavor", "image", "key_name", "user_data", "key_value", "iaas_config")
-    map = {"key_name" : get_key_name, "key_value" : get_key_value, "iaas_config" : get_config}
+    map = {"key_name" : get_key_name, "key_value" : get_key_value, "iaas_config" : get_config,
+           "user_data" : get_user_data}
 
 
 class OpenstackAPI(object):
