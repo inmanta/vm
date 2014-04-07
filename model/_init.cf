@@ -41,6 +41,7 @@ entity IaaS:
         :param name A name to identity the IaaS
     """
     string name
+    string iaas_config_string
 end
 
 index IaaS(name)
@@ -53,13 +54,39 @@ entity IaaSConfig:
     """
         The configuration to connect to the IaaS provider
     """
+end
+implement IaaSConfig using std::none
+
+entity OpenstackConfig extends IaaSConfig:
+    """
+        The configuration for accessing an Openstack based IaaS
+    """
     string connection_url
     string username
     string password
     string tenant
-    string type
 end
-implement IaaSConfig using std::none
+
+implementation osConfig for OpenstackConfig:
+    iaas.iaas_config_string = template("vm/openstack_config.tmpl")
+end
+
+implement OpenstackConfig using osConfig
+
+entity AWSConfig extends IaaSConfig:
+    """
+        The configuration to access Amazon Web Services
+    """
+    string region
+    string key_id
+    string secret_id
+end
+
+implementation awsConfig for AWSConfig:
+    iaas.iaas_config_string = template("vm/ec2_config.tmpl")
+end
+
+implement AWSConfig using awsConfig
 
 IaaS iaas [1] -- [1] IaaSConfig config
 

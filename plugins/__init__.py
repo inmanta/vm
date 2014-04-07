@@ -25,7 +25,7 @@ import os, re, logging, json, tempfile, urllib, time
 
 from http import client
 from dateutil import parser
-import base64
+import base64, json
 
 LOGGER = logging.getLogger(__name__)
 
@@ -40,14 +40,9 @@ def get_config(exporter, vm):
     """
         Create the auth url that openstack can use
     """
-    iaas = vm.iaas
-    iaas_config = iaas.config
-
-    if iaas_config.type != "openstack":
-        raise Exception("Only openstack is currently supported")
-
-    return {"url" : iaas_config.connection_url, "username" : iaas_config.username,
-            "tenant" : iaas_config.tenant, "password" : iaas_config.password}
+    if vm.iaas.iaas_config_string is None:
+        raise Exception("A valid config string is required")
+    return json.loads(vm.iaas.iaas_config_string)
 
 def get_user_data(exporter, vm):
     """
@@ -374,7 +369,6 @@ class OpenstackAPI(object):
         """
         Boot the virtual machine
         """
-        print(user_data)
         auth_token = self.get_auth_token()
 
         if "compute" not in self._services:
@@ -382,12 +376,15 @@ class OpenstackAPI(object):
 
         _url = self._services["compute"] + "/servers"
 
+        if user_data is not None and len(user_data) > 0:
+            user_data = base64.encodestring(user_data.encode()).decode("ascii")
+
         body = {"server" : {
             "name" : name,
             "flavorRef" : flavor,
             "key_name" : key_name,
             "imageRef" : image,
-            "user_data" : base64.encodestring(user_data.encode()).decode("ascii"),
+            "user_data" : user_data,
             "max_count" : 1,
             "min_count" : 1,
         }}
