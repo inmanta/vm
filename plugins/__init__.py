@@ -49,10 +49,16 @@ def get_user_data(exporter, vm):
         Return an empty string when the user_data value is unknown
         TODO: this is a hack
     """
+    ua = None
     if isinstance(vm.user_data, Unknown):
-        return ""
-    
-    return vm.user_data
+        ua = vm.user_data
+    else:
+        ua = vm.user_data
+
+    if ua is None or ua == "":
+        raise Exception("User data is required!")
+
+    return ua
 
 @resource("vm::Host", agent = "iaas.name", id_attribute = "name")
 class Host(Resource):
@@ -377,7 +383,7 @@ class OpenstackAPI(object):
         _url = self._services["compute"] + "/servers"
 
         if user_data is not None and len(user_data) > 0:
-            user_data = base64.encodestring(user_data.encode()).decode("ascii")
+            user_data = base64.encodestring(user_data.encode())
 
         body = {"server" : {
             "name" : name,
@@ -488,7 +494,7 @@ class VMHandler(ResourceHandler):
             Get facts about this resource
         """
         LOGGER.debug("Finding facts for %s" % resource.id.resource_str())
-        
+
         OS_api = OpenstackAPI(resource.iaas_config["url"], resource.iaas_config["tenant"],
                               resource.iaas_config["username"], resource.iaas_config["password"])
 

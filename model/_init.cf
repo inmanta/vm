@@ -42,6 +42,7 @@ entity IaaS:
     """
     string name
     string iaas_config_string
+    string route_script
 end
 
 index IaaS(name)
@@ -78,8 +79,8 @@ entity AWSConfig extends IaaSConfig:
         The configuration to access Amazon Web Services
     """
     string region
-    string key_id
-    string secret_id
+    string access_key
+    string secret_key
 end
 
 implementation awsConfig for AWSConfig:
