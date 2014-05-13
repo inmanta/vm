@@ -69,7 +69,7 @@ entity OpenstackConfig extends IaaSConfig:
 end
 
 implementation osConfig for OpenstackConfig:
-    iaas.iaas_config_string = template("vm/openstack_config.tmpl")
+    iaas.iaas_config_string = std::template("vm/openstack_config.tmpl")
 end
 
 implement OpenstackConfig using osConfig
@@ -84,7 +84,7 @@ entity AWSConfig extends IaaSConfig:
 end
 
 implementation awsConfig for AWSConfig:
-    iaas.iaas_config_string = template("vm/ec2_config.tmpl")
+    iaas.iaas_config_string = std::template("vm/ec2_config.tmpl")
 end
 
 implement AWSConfig using awsConfig
