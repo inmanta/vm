@@ -58,37 +58,6 @@ entity IaaSConfig:
 end
 implement IaaSConfig using std::none
 
-entity OpenstackConfig extends IaaSConfig:
-    """
-        The configuration for accessing an Openstack based IaaS
-    """
-    string connection_url
-    string username
-    string password
-    string tenant
-end
-
-implementation osConfig for OpenstackConfig:
-    iaas.iaas_config_string = std::template("vm/openstack_config.tmpl")
-end
-
-implement OpenstackConfig using osConfig
-
-entity AWSConfig extends IaaSConfig:
-    """
-        The configuration to access Amazon Web Services
-    """
-    string region
-    string access_key
-    string secret_key
-end
-
-implementation awsConfig for AWSConfig:
-    iaas.iaas_config_string = std::template("vm/ec2_config.tmpl")
-end
-
-implement AWSConfig using awsConfig
-
 IaaS iaas [1] -- [1] IaaSConfig config
 
 """
