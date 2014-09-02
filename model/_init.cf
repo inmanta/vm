@@ -73,3 +73,5 @@ entity ManagementServer extends vm::Host:
     """
 end
 
+implement Host using std::hostDefaults
+

@@ -6,3 +6,4 @@ author: Bart Vanbrabant <bart.vanbrabant@cs.kuleuven.be>
 requires:
     ip: git@github.com:bartv/imp-ip, ">= 0.1"
     std: git@github.com:bartv/imp-std, ">= 0.1"
+    ssh: git@github.com:bartv/imp-ssh, ">= 0.1"
