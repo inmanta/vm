@@ -32,7 +32,11 @@ entity Host extends ip::Host:
     string user_data
 end
 
-implement vm::Host using std::none
+implement vm::Host using ipFact
+
+implementation ipFact:
+    self.ip = std::getfact(self, "ip_address")
+end
 
 entity IaaS:
     """
