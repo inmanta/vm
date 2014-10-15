@@ -17,7 +17,7 @@
     Technical Contact: bart.vanbrabant@cs.kuleuven.be
 """
 
-entity Host extends std::Host:
+entity Host extends ip::Host:
     """
         This entity represents a virtual machine that is hosted on an IaaS
 
