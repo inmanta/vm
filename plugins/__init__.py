@@ -18,9 +18,9 @@
 
 import logging, json
 
-from Imp.resources import Resource, resource, ResourceNotFoundExcpetion
-from Imp.agent.handler import provider, ResourceHandler
-from Imp.execute.util import Unknown
+from impera.resources import Resource, resource, ResourceNotFoundExcpetion
+from impera.agent.handler import provider, ResourceHandler
+from impera.execute.util import Unknown
 
 
 LOGGER = logging.getLogger(__name__)
