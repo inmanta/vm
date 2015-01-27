@@ -13,7 +13,7 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
-    Contect: bart@impera.io
+    Contact: bart@impera.io
 """
 
 entity Host extends ip::Host:
@@ -38,6 +38,24 @@ implement vm::Host using ipFact
 implementation ipFact:
     self.ip = std::getfact(self, "ip_address")
 end
+
+entity Image:
+    """
+        A virtual machine image
+
+        :param id The identifier used by the image on the IaaS
+        :param name A human friendly name for the image
+        :param user The default user to login to after a VM is booted from this image
+    """
+    string id
+    string name
+    string user
+end
+
+Image vm_image [0:] -- [1] std::OS os
+ssh::Key key [1] -- [0:] Image vm_image
+
+implement vm::Image using std::none
 
 entity IaaS:
     """

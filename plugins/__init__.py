@@ -21,7 +21,7 @@ import logging, json
 from impera.resources import Resource, resource, ResourceNotFoundExcpetion
 from impera.agent.handler import provider, ResourceHandler
 from impera.execute.util import Unknown
-
+from impera.plugins.base import plugin
 
 LOGGER = logging.getLogger(__name__)
 
@@ -63,6 +63,15 @@ class Host(Resource):
     fields = ("name", "flavor", "image", "key_name", "user_data", "key_value", "iaas_config", "purged")
     map = {"key_name" : get_key_name, "key_value" : get_key_value, "iaas_config" : get_config,
            "user_data" : get_user_data}
+
+@plugin
+def names(host_prefix: "string", count: "number") -> "list":
+    names = []
+    for i in range(1, int(count) + 1):
+        names.append(host_prefix + str(i))
+
+    return names
+
 
 
 
