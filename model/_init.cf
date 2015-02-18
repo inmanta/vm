@@ -98,3 +98,4 @@ end
 
 implement Host using std::hostDefaults
 
+ssh::Key public_key [1] -- [0:] Host vm
