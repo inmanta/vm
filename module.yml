@@ -1,9 +1,9 @@
 author: Bart Vanbrabant <bart@impera.io>
 license: Apache 2.0
 name: vm
-source: git@github.com:impera-io/vm
+source: git@git.impera.io:modules/vm
 version: 0.4b1
 requires:
-    ip: git@github.com:impera-io/ip, ">= 0.1" 
-    ssh: git@github.com:impera-io/ssh, ">= 0.1" 
-    std: git@github.com:impera-io/std, ">= 0.1"
+    ip: git@git.impera.io:modules/ip, ">= 0.1"
+    ssh: git@git.impera.io:modules/ssh, ">= 0.1"
+    std: git@git.impera.io:modules/std, ">= 0.1"
