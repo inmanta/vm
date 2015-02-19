@@ -35,7 +35,7 @@ end
 
 implement vm::Host using ipFact
 
-implementation ipFact:
+implementation ipFact for ip::Host:
     self.ip = std::getfact(self, "ip_address")
 end
 
