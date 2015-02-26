@@ -67,8 +67,12 @@ class Host(Resource):
 @plugin
 def names(host_prefix: "string", count: "number") -> "list":
     names = []
+    formatter = "%d" in host_prefix
     for i in range(1, int(count) + 1):
-        names.append(host_prefix + str(i))
+        if formatter:
+            names.append(host_prefix % i)
+        else:
+            names.append(host_prefix + str(i))
 
     return names
 
