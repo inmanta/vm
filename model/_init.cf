@@ -105,10 +105,8 @@ entity Network:
         A network at the IaaS provider to which the VM should be connected
         
         :param name The name of the network.
-        :param id The id of the network
     """
     string name
-    string id
 end
 
 Network network [1] -- [0:] Host host
