@@ -60,9 +60,13 @@ class Host(Resource):
     """
         A virtual machine managed by a hypervisor or IaaS
     """
-    fields = ("name", "flavor", "image", "key_name", "user_data", "key_value", "iaas_config", "purged", "network")
-    map = {"key_name" : get_key_name, "key_value" : get_key_value, "iaas_config" : get_config,
-           "user_data" : get_user_data, "network": lambda _, vm: vm.network.name}
+    fields = ("name", "flavor", "image", "key_name", "user_data", "key_value", "iaas_config", 
+              "purged", "network", "purge_on_delete")
+    map = {"key_name": get_key_name,
+           "key_value": get_key_value,
+           "iaas_config": get_config,
+           "user_data" : get_user_data,
+           "network": lambda _, vm: vm.network.name}
 
 @plugin
 def names(host_prefix: "string", count: "number") -> "list":

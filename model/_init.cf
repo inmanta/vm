@@ -26,11 +26,14 @@ entity Host extends ip::Host:
         :param user_data A script that is booted on first boot
         :param public_key_name The name of the public key that needs to be deployed
         :param purged The state of the virtual machine
+        :param purge_on_delete Purge the vm when it is no longer included in the configuration
+                               model.
     """
     string flavor
     string image
     string user_data
     bool   purged = false
+    bool   purge_on_delete = true
 end
 
 implement vm::Host using ipFact
