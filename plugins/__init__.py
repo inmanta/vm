@@ -38,6 +38,8 @@ def get_config(exporter, vm):
     """
     if vm.iaas.iaas_config_string is None:
         raise Exception("A valid config string is required")
+    if isinstance(vm.iaas.iaas_config_string, Unknown):
+        return {}
     return json.loads(vm.iaas.iaas_config_string)
 
 def get_user_data(exporter, vm):
