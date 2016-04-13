@@ -20,8 +20,9 @@ import logging, json
 
 from impera.resources import Resource, resource, ResourceNotFoundExcpetion
 from impera.agent.handler import provider, ResourceHandler
-from impera.execute.util import Unknown
 from impera.plugins.base import plugin
+from impera.execute.proxy import UnknownException
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -36,9 +37,10 @@ def get_config(exporter, vm):
     """
         Create the auth url that openstack can use
     """
-    if vm.iaas.iaas_config_string is None:
-        raise Exception("A valid config string is required")
-    if isinstance(vm.iaas.iaas_config_string, Unknown):
+    try: 
+        if vm.iaas.iaas_config_string is None:
+            raise Exception("A valid config string is required")
+    except UnknownException:
         return {}
     return json.loads(vm.iaas.iaas_config_string)
 
@@ -47,12 +49,10 @@ def get_user_data(exporter, vm):
         Return an empty string when the user_data value is unknown
         TODO: this is a hack
     """
-    ua = None
-    if isinstance(vm.user_data, Unknown):
-        ua = ""
-    else:
+    try: 
         ua = vm.user_data
-
+    except UnknownException:
+        ua = ""
     #if ua is None or ua == "":
     #    raise Exception("User data is required!")
     return ua
