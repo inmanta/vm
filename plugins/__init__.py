@@ -20,7 +20,7 @@ import logging, json
 
 from impera.resources import Resource, resource, ResourceNotFoundExcpetion
 from impera.agent.handler import provider, ResourceHandler
-from impera.plugins.base import plugin
+from impera.plugins import plugin
 from impera.execute.proxy import UnknownException
 
 
@@ -37,7 +37,7 @@ def get_config(exporter, vm):
     """
         Create the auth url that openstack can use
     """
-    try: 
+    try:
         if vm.iaas.iaas_config_string is None:
             raise Exception("A valid config string is required")
     except UnknownException:
@@ -49,7 +49,7 @@ def get_user_data(exporter, vm):
         Return an empty string when the user_data value is unknown
         TODO: this is a hack
     """
-    try: 
+    try:
         ua = vm.user_data
     except UnknownException:
         ua = ""
@@ -62,7 +62,7 @@ class Host(Resource):
     """
         A virtual machine managed by a hypervisor or IaaS
     """
-    fields = ("name", "flavor", "image", "key_name", "user_data", "key_value", "iaas_config", 
+    fields = ("name", "flavor", "image", "key_name", "user_data", "key_value", "iaas_config",
               "purged", "network", "purge_on_delete")
     map = {"key_name": get_key_name,
            "key_value": get_key_value,
