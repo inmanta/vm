@@ -4,3 +4,5 @@ validate:
         - docker
     script:
         - inmanta -vvv modules validate -r git@git.inmanta.com:modules/
+    only:
+        - tags
