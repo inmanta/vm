@@ -38,6 +38,18 @@ entity Host extends ip::Host:
     bool   purge_on_delete = true
 end
 
+entity ExtraConfig:
+"""
+    an object for handlers to add config to the resource
+"""
+    string name
+    string content
+end
+
+implement ExtraConfig using std::none
+
+Host host [1] -- [0:] ExtraConfig extraconfig
+
 implement vm::Host using ipFact
 
 implementation ipFact for ip::Host:

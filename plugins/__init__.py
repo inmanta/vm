@@ -63,12 +63,13 @@ class Host(Resource):
         A virtual machine managed by a hypervisor or IaaS
     """
     fields = ("name", "flavor", "image", "key_name", "user_data", "key_value", "iaas_config",
-              "purged", "network", "purge_on_delete")
+              "purged", "network", "purge_on_delete", "extraconfig")
     map = {"key_name": get_key_name,
            "key_value": get_key_value,
            "iaas_config": get_config,
            "user_data" : get_user_data,
-           "network": lambda _, vm: vm.network.name}
+           "network": lambda _, vm: vm.network.name,
+           "extraconfig" : lambda _,xs: "{" + ",".join(["\"%s\" : %s" % (x.name,x.content) for x in xs.extraconfig ]) + "}"}
 
 @plugin
 def names(host_prefix: "string", count: "number") -> "list":

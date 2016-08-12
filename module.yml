@@ -1,7 +1,7 @@
 author: Inmanta <code@inmanta.com>
 license: Apache 2.0
 name: vm
-version: 0.4.1
+version: 0.4.2.dev1470991386
 requires:
 - ip
 - ssh
